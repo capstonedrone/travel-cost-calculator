@@ -434,18 +434,27 @@ $('calcBudget').addEventListener('click',calcBudget);$('resetPlan').addEventList
 
 renderItems(); renderTransport(); calcBudget(); loadFX();
 
-// 부모 페이지(Tistory 등)에 현재 문서 높이를 알려 iframe 높이를 자동 조절할 수 있게 합니다.
+// 부모 페이지(Tistory 등)에 계산기 '실제 콘텐츠 높이'를 알려 iframe 높이를 자동 조절합니다.
+// documentElement.scrollHeight는 iframe의 현재 viewport 높이보다 작아질 수 없어
+// 큰 초기 높이를 준 경우 하단 여백을 줄이지 못하므로 .wrap의 실제 렌더링 높이를 측정합니다.
 (function setupAutoHeight(){
+  const content = document.querySelector('.wrap');
   let lastHeight = 0;
   let raf = 0;
+
+  function measureContentHeight(){
+    if (!content) return 0;
+    const rect = content.getBoundingClientRect();
+    // body margin은 0이며 .wrap이 문서 최상단에서 시작합니다.
+    // bottom 값을 사용하면 .wrap의 하단 padding까지 포함한 실제 콘텐츠 높이가 됩니다.
+    return Math.ceil(rect.bottom + window.scrollY);
+  }
+
   function reportHeight(){
     cancelAnimationFrame(raf);
     raf = requestAnimationFrame(() => {
-      const h = Math.max(
-        document.documentElement.scrollHeight,
-        document.body ? document.body.scrollHeight : 0
-      );
-      if (Math.abs(h - lastHeight) < 2) return;
+      const h = measureContentHeight();
+      if (!h || Math.abs(h - lastHeight) < 2) return;
       lastHeight = h;
       window.parent.postMessage({
         type: 'kdd-travel-calculator-resize',
@@ -453,15 +462,23 @@ renderItems(); renderTransport(); calcBudget(); loadFX();
       }, '*');
     });
   }
+
   window.addEventListener('load', reportHeight);
   window.addEventListener('resize', reportHeight);
-  if ('ResizeObserver' in window) {
+
+  if ('ResizeObserver' in window && content) {
     const ro = new ResizeObserver(reportHeight);
-    ro.observe(document.documentElement);
+    ro.observe(content);
   } else {
     setInterval(reportHeight, 1000);
   }
-  [100, 500, 1200].forEach(ms => setTimeout(reportHeight, ms));
+
+  if ('MutationObserver' in window && content) {
+    const mo = new MutationObserver(reportHeight);
+    mo.observe(content, {subtree:true, childList:true, characterData:true, attributes:true});
+  }
+
+  [0, 100, 300, 800, 1500].forEach(ms => setTimeout(reportHeight, ms));
 })();
 </script>
 </body>

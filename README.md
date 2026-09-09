@@ -1,34 +1,44 @@
-# 여행지 체감물가 계산기 Beta 1.0
+# Kyle's Travel Cost Calculator v1.1
 
-## 포함 기능
-- 출발통화 선택 및 JPY 환율 자동 조회 (Frankfurter v2)
-- 일본 5개 도시: 기타큐슈, 후쿠오카, 오사카, 도쿄, 삿포로
-- 우동/라멘/햄버거/생맥주/초밥/타코야키/커피/기념품 대표 가격 범위
-- 전철·버스 거리별 대표 요금 범위
-- 도시별 거리운임 기반 택시 비용 개략 계산
-- 여행일수/인원/소비스타일/교통/쇼핑/숙박을 포함한 전체 여행예산 계산
-- 모바일 반응형
-- API 실패 시 수동 환율 입력
+모바일 대응 및 Tistory iframe 자동 높이 조절 기능을 추가한 버전입니다.
 
-## 티스토리에 넣는 권장 방법
-1. 이 폴더의 `index.html`을 GitHub 저장소에 업로드합니다.
-2. GitHub Pages를 활성화합니다.
-3. 생성된 Pages 주소를 티스토리 HTML 모드의 iframe src에 넣습니다.
+## GitHub 업데이트
+기존 repository의 루트에 있는 `index.html`을 이 버전의 `index.html`로 교체하세요.
 
-예시:
+## Tistory 권장 삽입 코드
 
 ```html
-<iframe
-  src="https://YOUR-ID.github.io/YOUR-REPO/"
-  width="100%"
-  height="1700"
-  style="border:0; border-radius:16px; overflow:hidden;"
-  loading="lazy">
-</iframe>
+<div style="width:100%; margin:24px 0;">
+  <iframe
+    id="kddTravelCalculator"
+    src="https://capstonedrone.github.io/travel-cost-calculator/"
+    title="여행지 체감물가 계산기"
+    width="100%"
+    height="1800"
+    frameborder="0"
+    scrolling="no"
+    loading="lazy"
+    style="display:block;width:100%;max-width:100%;border:0;overflow:hidden;">
+  </iframe>
+</div>
+<script>
+(function(){
+  var frame = document.getElementById('kddTravelCalculator');
+  if (!frame) return;
+  window.addEventListener('message', function(e){
+    if (e.origin !== 'https://capstonedrone.github.io') return;
+    if (!e.data || e.data.type !== 'kdd-travel-calculator-resize') return;
+    var h = Number(e.data.height);
+    if (!Number.isFinite(h)) return;
+    frame.style.height = Math.max(700, Math.min(6000, h + 8)) + 'px';
+  });
+})();
+</script>
 ```
 
-## 데이터 수정
-`index.html` 내부 JavaScript의 `CITIES` 객체만 수정하면 도시별 음식/교통/택시 데이터를 바꿀 수 있습니다.
+Tistory 본문에서 script가 제거되는 경우에는 iframe만 유지하고 CSS 미디어쿼리로 모바일 높이를 넉넉히 주거나, 리스너 스크립트를 스킨 HTML에 한 번 추가하세요.
 
-## 주의
-음식·대중교통 데이터는 Beta용 대표 범위이며 실제 매장/노선/시기와 다를 수 있습니다. 택시는 거리운임 중심의 개략치로, 저속주행·정체·호출료 등이 포함되지 않습니다.
+
+## v1.2 변경점
+- Tistory iframe 자동 높이 계산을 문서 scrollHeight가 아닌 `.wrap` 실제 콘텐츠 높이 기준으로 수정했습니다.
+- 큰 초기 iframe 높이에서 하단 빈 공간이 남는 문제를 해결합니다.
