@@ -1,0 +1,411 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="여행지 체감물가·환율·교통비·여행예산 계산기" />
+  <title>여행지 체감물가 계산기 | Kyle's Deep Dive</title>
+  <style>
+    :root{
+      --bg:#f5f7fb;
+      --card:#ffffff;
+      --text:#172033;
+      --muted:#667085;
+      --line:#e6eaf0;
+      --accent:#2457f5;
+      --accent-soft:#eef3ff;
+      --good:#087a55;
+      --warn:#9a6700;
+      --radius:18px;
+      --shadow:0 8px 30px rgba(20,32,60,.07);
+    }
+    *{box-sizing:border-box}
+    html{scroll-behavior:smooth}
+    body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR",Arial,sans-serif;line-height:1.55}
+    button,input,select{font:inherit}
+    .wrap{max-width:980px;margin:0 auto;padding:22px 14px 60px}
+    .hero{padding:24px 4px 16px}
+    .eyebrow{font-size:13px;color:var(--accent);font-weight:800;letter-spacing:.02em}
+    h1{margin:4px 0 8px;font-size:clamp(28px,5vw,42px);line-height:1.18}
+    .hero p{margin:0;color:var(--muted);max-width:760px}
+    .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:14px}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px}
+    .span-12{grid-column:span 12}.span-7{grid-column:span 7}.span-5{grid-column:span 5}.span-6{grid-column:span 6}
+    @media(max-width:760px){.span-7,.span-5,.span-6{grid-column:span 12}.wrap{padding:14px 10px 50px}.card{padding:15px}}
+    .section-title{font-size:18px;font-weight:800;margin:0 0 12px}
+    .sub{font-size:13px;color:var(--muted)}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    @media(max-width:560px){.row{grid-template-columns:1fr}}
+    label{display:block;font-size:13px;color:var(--muted);font-weight:700;margin:0 0 6px}
+    select,input[type="number"]{width:100%;border:1px solid var(--line);border-radius:12px;background:#fff;color:var(--text);padding:11px 12px;outline:none}
+    select:focus,input:focus{border-color:#9bb3ff;box-shadow:0 0 0 3px rgba(36,87,245,.09)}
+    .fx{margin-top:12px;background:linear-gradient(135deg,var(--accent-soft),#f8fbff);border:1px solid #dfe8ff;border-radius:15px;padding:15px}
+    .fx-main{font-size:27px;font-weight:900;letter-spacing:-.03em}
+    .fx-meta{font-size:12px;color:var(--muted);margin-top:3px}
+    .status{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--good)}
+    .dot{width:7px;height:7px;border-radius:999px;background:currentColor}
+    .manual{margin-top:10px;display:none}
+    .manual.show{display:block}
+    .items{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+    @media(max-width:560px){.items{grid-template-columns:1fr}}
+    .item{border:1px solid var(--line);border-radius:14px;padding:12px;display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;background:#fff}
+    .item-icon{font-size:24px}
+    .item-name{font-size:14px;font-weight:800}
+    .item-price{font-size:13px;color:var(--muted)}
+    .item-conv{font-size:12px;color:var(--accent);font-weight:700;margin-top:2px}
+    .qty{width:58px!important;padding:8px!important;text-align:center}
+    .help{margin-top:12px;padding:11px 12px;border-radius:12px;background:#fafbfc;border:1px dashed #d9dee7;color:var(--muted);font-size:12px}
+    .transport-result{margin-top:12px;padding:14px;background:#f8fafc;border-radius:14px;border:1px solid var(--line)}
+    .big{font-size:23px;font-weight:900}
+    .checkrow{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-top:10px;font-size:13px;color:var(--muted)}
+    .checkrow label{margin:0;color:var(--muted);font-weight:600;display:flex;align-items:center;gap:6px}
+    .budget-controls{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+    @media(max-width:760px){.budget-controls{grid-template-columns:1fr 1fr}}
+    @media(max-width:440px){.budget-controls{grid-template-columns:1fr}}
+    .budget-result{margin-top:14px;border-radius:16px;padding:17px;background:linear-gradient(135deg,#172033,#263551);color:white}
+    .budget-result .muted{color:#c9d3e4}
+    .budget-total{font-size:31px;font-weight:900;letter-spacing:-.03em;margin:4px 0}
+    .budget-origin{font-size:17px;font-weight:800;color:#dbe5ff}
+    table{width:100%;border-collapse:collapse;margin-top:14px;font-size:13px}
+    th,td{padding:9px 6px;border-bottom:1px solid rgba(255,255,255,.14);text-align:left}
+    th:last-child,td:last-child{text-align:right}
+    .btn{border:0;border-radius:12px;background:var(--accent);color:white;font-weight:800;padding:11px 15px;cursor:pointer}
+    .btn.secondary{background:#edf2ff;color:var(--accent)}
+    .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+    .sources a{color:var(--accent);text-decoration:none}.sources li{margin:7px 0;color:var(--muted);font-size:12px}
+    .footer{color:var(--muted);font-size:12px;padding:18px 4px 0;text-align:center}
+    .pill{display:inline-block;padding:4px 8px;border-radius:999px;background:#f1f4f8;color:#526071;font-size:11px;font-weight:800;margin-left:6px}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <header class="hero">
+    <div class="eyebrow">Kyle's Deep Dive · Travel Tool Beta</div>
+    <h1>여행지 체감물가 계산기</h1>
+    <p>출발 통화와 여행 도시를 고르면 최신 기준환율, 대표 음식 가격, 거리별 교통비와 전체 여행 소비예산을 한 번에 비교합니다.</p>
+  </header>
+
+  <main class="grid">
+    <section class="card span-12">
+      <h2 class="section-title">1. 통화와 여행지</h2>
+      <div class="row">
+        <div>
+          <label for="originCurrency">출발국 통화</label>
+          <select id="originCurrency">
+            <option value="KRW" selected>🇰🇷 대한민국 · KRW</option>
+            <option value="USD">🇺🇸 미국 · USD</option>
+            <option value="EUR">🇪🇺 유로 · EUR</option>
+            <option value="GBP">🇬🇧 영국 · GBP</option>
+            <option value="CNY">🇨🇳 중국 · CNY</option>
+            <option value="TWD">🇹🇼 대만 · TWD</option>
+            <option value="HKD">🇭🇰 홍콩 · HKD</option>
+            <option value="SGD">🇸🇬 싱가포르 · SGD</option>
+            <option value="THB">🇹🇭 태국 · THB</option>
+          </select>
+        </div>
+        <div>
+          <label for="city">여행지 <span class="pill">v1 일본 5개 도시</span></label>
+          <select id="city">
+            <option value="kitakyushu" selected>🇯🇵 기타큐슈 · JPY</option>
+            <option value="fukuoka">🇯🇵 후쿠오카 · JPY</option>
+            <option value="osaka">🇯🇵 오사카 · JPY</option>
+            <option value="tokyo">🇯🇵 도쿄 · JPY</option>
+            <option value="sapporo">🇯🇵 삿포로 · JPY</option>
+          </select>
+        </div>
+      </div>
+      <div class="fx">
+        <div class="status" id="fxStatus"><span class="dot"></span><span>환율 불러오는 중</span></div>
+        <div class="fx-main" id="fxMain">100 JPY = — KRW</div>
+        <div class="fx-meta" id="fxMeta">Frankfurter 최신 기준환율을 조회합니다.</div>
+        <div class="manual" id="manualWrap">
+          <label for="manualRate">자동 조회 실패 시 수동 환율 · 1 JPY = ? 출발통화</label>
+          <input type="number" id="manualRate" step="0.0001" min="0" placeholder="예: 9.20" />
+        </div>
+      </div>
+    </section>
+
+    <section class="card span-7">
+      <h2 class="section-title">2. 현지 대표 물가</h2>
+      <div class="sub" id="priceSubtitle">기타큐슈 여행자용 대표 가격대 · 1차 베타 데이터</div>
+      <div class="items" id="items"></div>
+      <div class="help">수량은 <b>여행 전체 기간 동안 먹거나 살 예상 횟수</b>입니다. 가격은 매장·지역·시기·메뉴에 따라 달라질 수 있으며, 실제 결제금액을 보장하는 값이 아닙니다.</div>
+    </section>
+
+    <section class="card span-5">
+      <h2 class="section-title">3. 교통비 계산</h2>
+      <div class="row">
+        <div>
+          <label for="transportType">교통수단</label>
+          <select id="transportType">
+            <option value="train">🚆 전철·기차</option>
+            <option value="bus">🚌 시내버스</option>
+            <option value="taxi">🚕 택시</option>
+          </select>
+        </div>
+        <div>
+          <label for="distance">이동거리 (km)</label>
+          <input id="distance" type="number" min="0.5" step="0.5" value="5" />
+        </div>
+      </div>
+      <div class="checkrow" id="taxiOptions" style="display:none">
+        <label><input type="checkbox" id="nightSurcharge" /> 심야 할증 20%</label>
+        <label id="winterLabel" style="display:none"><input type="checkbox" id="winterSurcharge" /> 삿포로 겨울 할증 20%</label>
+      </div>
+      <div class="transport-result">
+        <div class="sub">예상 1회 비용</div>
+        <div class="big" id="transportLocal">¥—</div>
+        <div class="sub" id="transportOrigin">출발통화 환산 —</div>
+        <div class="sub" id="transportNote" style="margin-top:7px">노선·운영사에 따라 실제 금액은 달라집니다.</div>
+      </div>
+      <div class="help">전철·버스는 거리별 대표 범위, 택시는 도시별 공개 거리운임을 바탕으로 계산한 <b>거리 기준 개략치</b>입니다. 택시는 신호대기·정체·호출료 등에 따라 더 높아질 수 있습니다.</div>
+    </section>
+
+    <section class="card span-12">
+      <h2 class="section-title">4. 여행 전체 예상 소비금액</h2>
+      <div class="budget-controls">
+        <div><label for="days">여행일수</label><input id="days" type="number" min="1" max="60" value="4" /></div>
+        <div><label for="people">인원</label><input id="people" type="number" min="1" max="20" value="1" /></div>
+        <div>
+          <label for="style">소비 스타일</label>
+          <select id="style">
+            <option value="0.9">절약형</option>
+            <option value="1" selected>일반형</option>
+            <option value="1.2">여유형</option>
+            <option value="1.45">미식·소비형</option>
+          </select>
+        </div>
+        <div><label for="transitRides">대중교통 1인·1일 이용횟수</label><input id="transitRides" type="number" min="0" step="1" value="4" /></div>
+        <div><label for="transitKm">대중교통 평균 이동거리 (km)</label><input id="transitKm" type="number" min="0.5" step="0.5" value="5" /></div>
+        <div><label for="taxiTrips">택시 1일 이용횟수 (일행 기준)</label><input id="taxiTrips" type="number" min="0" step="0.5" value="0" /></div>
+        <div><label for="taxiKm">택시 평균 거리 (km)</label><input id="taxiKm" type="number" min="0.5" step="0.5" value="5" /></div>
+        <div><label for="extraDaily">기타 지출 1인·1일 (JPY)</label><input id="extraDaily" type="number" min="0" step="100" value="1500" /></div>
+        <div><label for="shopping">추가 쇼핑예산 · 전체 (JPY)</label><input id="shopping" type="number" min="0" step="500" value="5000" /></div>
+        <div><label for="hotelPerNight">숙박비 · 1박/일행 (JPY)</label><input id="hotelPerNight" type="number" min="0" step="500" value="0" /></div>
+      </div>
+      <div class="actions">
+        <button class="btn" id="calcBudget">예산 다시 계산</button>
+        <button class="btn secondary" id="resetPlan">기본값으로 초기화</button>
+      </div>
+      <div class="budget-result">
+        <div class="muted" id="budgetTitle">기타큐슈 4일 · 1명 예상 소비금액</div>
+        <div class="budget-total" id="budgetLocal">¥— ~ ¥—</div>
+        <div class="budget-origin" id="budgetOrigin">약 — ~ — KRW</div>
+        <table>
+          <thead><tr><th>구분</th><th>예상 범위</th></tr></thead>
+          <tbody id="breakdown"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card span-12 sources">
+      <h2 class="section-title">데이터 기준 및 참고</h2>
+      <ul>
+        <li>환율: Frankfurter v2 공개 API. 최신 기준환율이며 카드사 승인환율·환전소 실제 적용환율과 다를 수 있습니다.</li>
+        <li>음식: 2026년 일본 주요 체인 공개 메뉴 가격과 일반적인 여행자 소비구간을 참고해 만든 1차 편집 범위입니다. 도시별 정밀 통계가 아닙니다.</li>
+        <li>택시: 도쿄·오사카·후쿠오카·기타큐슈·삿포로의 협회/운수기관 공개 거리운임을 기초로 한 거리 기준 계산입니다.</li>
+        <li><a href="https://frankfurter.dev/" target="_blank" rel="noopener">Frankfurter API</a> · <a href="https://jp.marugame.com/menu/udon/bukkake/" target="_blank" rel="noopener">丸亀製麺</a> · <a href="https://www.mcdonalds.co.jp/en/menu/" target="_blank" rel="noopener">McDonald's Japan</a> · <a href="https://www.kurasushi.co.jp/menu/" target="_blank" rel="noopener">くら寿司</a></li>
+      </ul>
+      <div class="help">데이터 버전: 2026-09-09 Beta 1.0 · 향후 도시/국가 추가 시 아래 JavaScript의 <code>CITIES</code> 데이터만 확장하면 됩니다.</div>
+    </section>
+  </main>
+
+  <div class="footer">© Kyle's Deep Dive · 여행비는 실제 일정과 소비습관에 따라 크게 달라질 수 있습니다.</div>
+</div>
+
+<script>
+const CURRENCY_META = {
+  KRW:{symbol:'₩',decimals:0}, USD:{symbol:'$',decimals:2}, EUR:{symbol:'€',decimals:2}, GBP:{symbol:'£',decimals:2},
+  CNY:{symbol:'¥',decimals:2}, TWD:{symbol:'NT$',decimals:0}, HKD:{symbol:'HK$',decimals:2}, SGD:{symbol:'S$',decimals:2}, THB:{symbol:'฿',decimals:2}
+};
+
+const BASE_ITEMS = [
+  ['udon','🍜','우동 1그릇'],['ramen','🍜','라멘 1그릇'],['burger','🍔','햄버거 세트'],['beer','🍺','생맥주 약 300ml'],
+  ['sushi','🍣','초밥 1끼'],['takoyaki','🐙','타코야키 1팩'],['coffee','☕','커피 1잔'],['souvenir','🛍️','대표 쇼핑 아이템']
+];
+
+const CITIES = {
+  kitakyushu:{
+    name:'기타큐슈', currency:'JPY',
+    prices:{udon:[400,750],ramen:[700,1050],burger:[700,1000],beer:[400,650],sushi:[1200,2400],takoyaki:[500,800],coffee:[150,400],souvenir:[900,2500]},
+    souvenirName:'고쿠라·모지코 기념품',
+    transit:{train:[[3,180,260],[8,220,360],[15,300,500],[30,450,800],[999,700,1400]],bus:[[3,180,260],[8,220,340],[15,280,450],[30,400,700],[999,650,1100]]},
+    taxi:{baseKm:1.04,base:610,stepKm:0.280,step:80,sourceYear:'북九州택시협회 공개 운임 기준'}
+  },
+  fukuoka:{
+    name:'후쿠오카', currency:'JPY',
+    prices:{udon:[450,800],ramen:[700,1100],burger:[700,1000],beer:[450,700],sushi:[1300,2700],takoyaki:[500,800],coffee:[150,450],souvenir:[1000,3000]},
+    souvenirName:'명란·하카타 기념품',
+    transit:{train:[[3,210,260],[8,250,330],[15,300,430],[30,380,600],[999,550,1000]],bus:[[3,210,260],[8,240,330],[15,280,430],[30,380,600],[999,550,900]]},
+    taxi:{baseKm:1.1,base:600,stepKm:0.287,step:100,sourceYear:'후쿠오카시택시협회 2026-07 운임 기준'}
+  },
+  osaka:{
+    name:'오사카', currency:'JPY',
+    prices:{udon:[450,850],ramen:[850,1300],burger:[700,1000],beer:[450,700],sushi:[1300,2800],takoyaki:[550,850],coffee:[150,450],souvenir:[900,2500]},
+    souvenirName:'오사카 과자·기념품',
+    transit:{train:[[3,190,240],[8,240,330],[15,290,430],[30,380,650],[999,600,1100]],bus:[[3,210,260],[8,210,300],[15,250,380],[30,350,550],[999,500,850]]},
+    taxi:{baseKm:1.2,base:600,stepKm:0.231,step:100,sourceYear:'오사카택시협회 2025-11 운임 기준'}
+  },
+  tokyo:{
+    name:'도쿄', currency:'JPY',
+    prices:{udon:[500,900],ramen:[900,1450],burger:[700,1050],beer:[500,800],sushi:[1600,3500],takoyaki:[600,900],coffee:[180,500],souvenir:[1000,3000]},
+    souvenirName:'도쿄 과자·기념품',
+    transit:{train:[[3,180,230],[8,210,300],[15,260,380],[30,350,550],[999,500,900]],bus:[[3,210,260],[8,210,300],[15,240,340],[30,300,450],[999,400,650]]},
+    taxi:{baseKm:1.0,base:500,stepKm:0.232,step:100,sourceYear:'도쿄하이어택시협회 현행 운임 기준'}
+  },
+  sapporo:{
+    name:'삿포로', currency:'JPY',
+    prices:{udon:[500,900],ramen:[900,1450],burger:[700,1050],beer:[500,800],sushi:[1600,3600],takoyaki:[600,900],coffee:[180,500],souvenir:[1000,3200]},
+    souvenirName:'시로이코이비토 등 홋카이도 기념품',
+    transit:{train:[[3,210,260],[8,250,330],[15,290,400],[30,380,550],[999,550,900]],bus:[[3,210,260],[8,240,320],[15,280,380],[30,350,500],[999,500,800]]},
+    taxi:{baseKm:1.05,base:600,stepKm:0.272,step:100,sourceYear:'삿포로권 2025-12 상한운임 예시'}
+  }
+};
+
+let fxRate = null; // 1 JPY -> origin currency
+let fxDate = null;
+
+const $ = (id) => document.getElementById(id);
+const citySel=$('city'), originSel=$('originCurrency');
+
+function money(v,currency='JPY'){
+  if(!Number.isFinite(v)) return '—';
+  if(currency==='JPY') return '¥'+Math.round(v).toLocaleString('ko-KR');
+  const m=CURRENCY_META[currency]||{symbol:currency+' ',decimals:2};
+  return m.symbol+v.toLocaleString('ko-KR',{minimumFractionDigits:m.decimals,maximumFractionDigits:m.decimals});
+}
+function convertJPY(v){ return fxRate ? v*fxRate : null; }
+function currentCity(){ return CITIES[citySel.value]; }
+
+async function loadFX(){
+  const origin=originSel.value;
+  $('fxStatus').innerHTML='<span class="dot"></span><span>환율 불러오는 중</span>';
+  $('fxStatus').style.color='var(--good)';
+  $('manualWrap').classList.remove('show');
+  try{
+    if(origin==='JPY') { fxRate=1; fxDate='same currency'; }
+    else {
+      const res=await fetch(`https://api.frankfurter.dev/v2/rate/JPY/${origin}`,{cache:'no-store'});
+      if(!res.ok) throw new Error('HTTP '+res.status);
+      const d=await res.json();
+      if(!d || !Number.isFinite(Number(d.rate))) throw new Error('invalid response');
+      fxRate=Number(d.rate); fxDate=d.date||'latest';
+    }
+    const hundred=100*fxRate;
+    $('fxMain').textContent=`100 JPY = ${money(hundred,origin)} (${origin})`;
+    $('fxMeta').textContent=`기준일 ${fxDate||'최신'} · 참고용 기준환율 · 실제 카드/환전 적용환율은 다를 수 있음`;
+    $('fxStatus').innerHTML='<span class="dot"></span><span>최신 기준환율 연결됨</span>';
+  }catch(e){
+    fxRate=null;
+    $('fxMain').textContent=`100 JPY = 자동 조회 실패`;
+    $('fxMeta').textContent='아래에 1 JPY당 출발통화 값을 직접 입력하면 모든 계산을 계속 사용할 수 있습니다.';
+    $('fxStatus').innerHTML='<span class="dot"></span><span>수동 환율 필요</span>';
+    $('fxStatus').style.color='var(--warn)';
+    $('manualWrap').classList.add('show');
+  }
+  renderItems(); renderTransport(); calcBudget();
+}
+
+function renderItems(){
+  const c=currentCity();
+  $('priceSubtitle').textContent=`${c.name} 여행자용 대표 가격대 · 2026-09 Beta`;
+  const box=$('items');
+  const oldQty={};
+  box.querySelectorAll('[data-key]').forEach(el=>oldQty[el.dataset.key]=Number(el.value)||0);
+  box.innerHTML='';
+  BASE_ITEMS.forEach(([key,icon,name])=>{
+    const [lo,hi]=c.prices[key];
+    const label=key==='souvenir'?c.souvenirName:name;
+    const conv=fxRate?`${money(convertJPY(lo),originSel.value)} ~ ${money(convertJPY(hi),originSel.value)}`:'환율 입력 후 환산';
+    const div=document.createElement('div');
+    div.className='item';
+    div.innerHTML=`<div class="item-icon">${icon}</div><div><div class="item-name">${label}</div><div class="item-price">${money(lo)} ~ ${money(hi)}</div><div class="item-conv">${conv}</div></div><input class="qty" type="number" min="0" step="1" value="${oldQty[key]??0}" data-key="${key}" aria-label="${label} 여행 전체 수량">`;
+    box.appendChild(div);
+  });
+  box.querySelectorAll('.qty').forEach(el=>el.addEventListener('input',calcBudget));
+}
+
+function bracketFare(type,km){
+  const arr=currentCity().transit[type];
+  return arr.find(x=>km<=x[0])?.slice(1) || arr[arr.length-1].slice(1);
+}
+function taxiFare(km,{night=false,winter=false}={}){
+  const t=currentCity().taxi;
+  let fare=t.base;
+  if(km>t.baseKm) fare += Math.ceil((km-t.baseKm)/t.stepKm)*t.step;
+  if(night) fare*=1.2;
+  if(winter && citySel.value==='sapporo') fare*=1.2;
+  return Math.ceil(fare/10)*10;
+}
+function renderTransport(){
+  const type=$('transportType').value;
+  const km=Math.max(.1,Number($('distance').value)||0);
+  const isTaxi=type==='taxi';
+  $('taxiOptions').style.display=isTaxi?'flex':'none';
+  $('winterLabel').style.display=(isTaxi&&citySel.value==='sapporo')?'flex':'none';
+  let lo,hi,note;
+  if(isTaxi){
+    const fare=taxiFare(km,{night:$('nightSurcharge').checked,winter:$('winterSurcharge').checked});
+    lo=Math.round(fare*.9/10)*10; hi=Math.round(fare*1.18/10)*10;
+    note=`${currentCity().taxi.sourceYear}. 정체·저속주행·호출료 제외.`;
+  } else {
+    [lo,hi]=bracketFare(type,km);
+    note='노선·운영사·환승 방식에 따라 달라지는 대표 범위입니다.';
+  }
+  $('transportLocal').textContent=`${money(lo)} ~ ${money(hi)}`;
+  $('transportOrigin').textContent=fxRate?`${money(convertJPY(lo),originSel.value)} ~ ${money(convertJPY(hi),originSel.value)} (${originSel.value})`:'환율 입력 후 출발통화로 환산';
+  $('transportNote').textContent=note;
+}
+
+function calcBudget(){
+  const c=currentCity();
+  const days=Math.max(1,Number($('days').value)||1);
+  const people=Math.max(1,Number($('people').value)||1);
+  const style=Number($('style').value)||1;
+  let foodLo=0,foodHi=0;
+  document.querySelectorAll('.qty').forEach(el=>{
+    const q=Math.max(0,Number(el.value)||0); const p=c.prices[el.dataset.key];
+    if(p){ foodLo+=p[0]*q*people; foodHi+=p[1]*q*people; }
+  });
+  foodLo*=style; foodHi*=style;
+
+  const rides=Math.max(0,Number($('transitRides').value)||0);
+  const transitKm=Math.max(.1,Number($('transitKm').value)||0);
+  const [trLo,trHi]=bracketFare('train',transitKm);
+  const transitLo=trLo*rides*days*people, transitHi=trHi*rides*days*people;
+
+  const taxiTrips=Math.max(0,Number($('taxiTrips').value)||0);
+  const taxiKm=Math.max(.1,Number($('taxiKm').value)||0);
+  const taxiOne=taxiFare(taxiKm);
+  const taxiLo=taxiOne*.9*taxiTrips*days, taxiHi=taxiOne*1.18*taxiTrips*days;
+
+  const extra=Math.max(0,Number($('extraDaily').value)||0)*days*people*style;
+  const shopping=Math.max(0,Number($('shopping').value)||0);
+  const hotel=Math.max(0,Number($('hotelPerNight').value)||0)*Math.max(0,days-1);
+
+  const lo=foodLo+transitLo+taxiLo+extra+shopping+hotel;
+  const hi=foodHi+transitHi+taxiHi+extra+shopping+hotel;
+  $('budgetTitle').textContent=`${c.name} ${days}일 · ${people}명 예상 소비금액`;
+  $('budgetLocal').textContent=`${money(lo)} ~ ${money(hi)}`;
+  $('budgetOrigin').textContent=fxRate?`약 ${money(convertJPY(lo),originSel.value)} ~ ${money(convertJPY(hi),originSel.value)} ${originSel.value}`:'환율 입력 후 출발통화 환산 표시';
+
+  const rows=[['선택 음식·음료',foodLo,foodHi],['대중교통',transitLo,transitHi],['택시',taxiLo,taxiHi],['기타 일일지출',extra,extra],['추가 쇼핑',shopping,shopping],['숙박',hotel,hotel]];
+  $('breakdown').innerHTML=rows.map(([n,a,b])=>`<tr><td>${n}</td><td>${money(a)}${Math.round(a)!==Math.round(b)?' ~ '+money(b):''}</td></tr>`).join('');
+}
+
+function resetPlan(){
+  $('days').value=4;$('people').value=1;$('style').value='1';$('transitRides').value=4;$('transitKm').value=5;$('taxiTrips').value=0;$('taxiKm').value=5;$('extraDaily').value=1500;$('shopping').value=5000;$('hotelPerNight').value=0;
+  document.querySelectorAll('.qty').forEach(el=>el.value=0); calcBudget();
+}
+
+originSel.addEventListener('change',loadFX);
+citySel.addEventListener('change',()=>{renderItems();renderTransport();calcBudget();});
+$('manualRate').addEventListener('input',()=>{const v=Number($('manualRate').value); if(v>0){fxRate=v;$('fxMain').textContent=`100 JPY = ${money(100*v,originSel.value)} (${originSel.value}) · 수동`;$('fxMeta').textContent='사용자가 직접 입력한 환율입니다.';renderItems();renderTransport();calcBudget();}});
+['transportType','distance','nightSurcharge','winterSurcharge'].forEach(id=>$(id).addEventListener('input',renderTransport));
+['days','people','style','transitRides','transitKm','taxiTrips','taxiKm','extraDaily','shopping','hotelPerNight'].forEach(id=>$(id).addEventListener('input',calcBudget));
+$('calcBudget').addEventListener('click',calcBudget);$('resetPlan').addEventListener('click',resetPlan);
+
+renderItems(); renderTransport(); calcBudget(); loadFX();
+</script>
+</body>
+</html>
